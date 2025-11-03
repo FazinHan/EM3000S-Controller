@@ -44,7 +44,6 @@ class controller:
         self.baud_rate = 19200
         self.inst = None
         self.rm = pyvisa.ResourceManager()
-        self.coonect()
 
     def connect(self):
         """Initializes and configures the serial connection."""
