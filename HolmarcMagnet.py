@@ -9,21 +9,7 @@ class controller:
     
     Protocol: 19200 Baud, 8-N-1, Raw Byte Commands
     """
-    
-    # --- This is our main lookup table ---
-    # We must add more values here by capturing more packets.
-    CURRENT_MAP = {
-        -2.0: [0x02, 0x29, 0x00, 0x00], # 553
-        -1.0: [0x00, 0xDE, 0x00, 0x00], # 222
-        -0.1: [0x00, 0x23, 0x00, 0x00], # 35
-         1.0: [0x00, 0xDE, 0x00, 0x01], # 222
-         4.0: [0x05, 0x13, 0x00, 0x01], # 1299
-         -4.0: [0x05, 0x13, 0x00, 0x00], # 1299
-         -3.9: [0x04, 0xf0, 0x00, 0x00], # 1299 - 35
-         -3.8: [0x04, 0xcd, 0x00, 0x00], # 1299 - 2*35
-         'test': [0x05, 0x14, 0x00, 0x00], # 1299 - 2*35
-         # 0.0: This is handled by the stop_and_query_field() function
-    }
+    startup_delay_sec = -2.0  # Time to wait 
 
     def current_map(self,current_amps):
         """Returns the 4-byte value array for a given current in Amps."""
@@ -191,7 +177,7 @@ class controller:
         print(f"\n--- Pulsing magnet to {amps}A for {duration_sec} seconds ---")
         self.set_current(amps)
         # print(f"  Holding for {duration_sec} seconds...")
-        time.sleep(duration_sec)
+        time.sleep(duration_sec+self.startup_delay_sec)
         field = self.stop_and_query_field()
         print(f"  Measured Field after pulse: {field} mT")
         print("--- Pulse complete ---")
