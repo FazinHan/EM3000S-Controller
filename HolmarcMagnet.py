@@ -2,7 +2,7 @@ import pyvisa
 import time
 import numpy as np
 
-class controller:
+class Controller:
     """
     A PyVISA-based controller for the Holmarc EM-series electromagnet
     based on reverse-engineered packet captures.
@@ -165,7 +165,11 @@ class controller:
         Queries the field without stopping the current.
         Returns the field reading in mT.
         """
-        print("\n  Sending QUERY sequence...")
+        # print("\n  Sending QUERY sequence...")
+
+        # --- Part 1: Send STOP command ---
+        self.inst.write_raw(bytes([0x64])); self._read_one_byte() # Ready Check
+        self.inst.write_raw(bytes([0x2B])); self._poll_for_byte(0x12) # Stop Cmd
         
         # --- Send QUERY command (0x0A) ---
         self.inst.write_raw(bytes([0x0A])) # The query
@@ -182,7 +186,7 @@ class controller:
         if byte3 is None: return "Query Failed"
         self.inst.write_raw(bytes([byte3])) # Echo
 
-        print("  QUERY sequence complete.")
+        # print("  QUERY sequence complete.")
 
         # --- Decode and return the value ---
         try:
@@ -192,8 +196,8 @@ class controller:
             # Sign Flag: 0x01 = Negative, 0x00 = Positive
             final_value = -scaled_magnitude if byte3 == 0x01 else scaled_magnitude
             
-            print(f"  Received Bytes: [0x{byte1:02X}, 0x{byte2:02X}, 0x{byte3:02X}]")
-            print(f"  Decoded Field: {final_value} mT")
+            # print(f"  Received Bytes: [0x{byte1:02X}, 0x{byte2:02X}, 0x{byte3:02X}]")
+            # print(f"  Decoded Field: {final_value} mT")
             return final_value
         except Exception as e:
             Warning(f"Query Failed: Error decoding bytes: {e}")
