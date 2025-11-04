@@ -196,7 +196,8 @@ class controller:
             print(f"  Decoded Field: {final_value} mT")
             return final_value
         except Exception as e:
-            return f"Query Failed: Error decoding bytes: {e}"
+            Warning(f"Query Failed: Error decoding bytes: {e}")
+            return None
 
     def current_map_test(self):
         currs = np.arange(-.4,.4,0.1)
