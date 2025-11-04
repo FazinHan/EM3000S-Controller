@@ -160,6 +160,45 @@ class controller:
         except Exception as e:
             return f"Query Failed: Error decoding bytes: {e}"
     
+    def query_field(self):
+        """
+        Queries the field without stopping the current.
+        Returns the field reading in mT.
+        """
+        print("\n  Sending QUERY sequence...")
+        
+        # --- Send QUERY command (0x0A) ---
+        self.inst.write_raw(bytes([0x0A])) # The query
+        
+        byte1 = self._read_one_byte() # Field Mag High Byte
+        if byte1 is None: return "Query Failed"
+        self.inst.write_raw(bytes([byte1])) # Echo
+        
+        byte2 = self._read_one_byte() # Field Mag Low Byte
+        if byte2 is None: return "Query Failed"
+        self.inst.write_raw(bytes([byte2])) # Echo
+        
+        byte3 = self._read_one_byte() # Field Sign Flag
+        if byte3 is None: return "Query Failed"
+        self.inst.write_raw(bytes([byte3])) # Echo
+
+        print("  QUERY sequence complete.")
+
+        # --- Decode and return the value ---
+        try:
+            raw_magnitude = (byte1 << 8) | byte2
+            scaled_magnitude = raw_magnitude / 10.0 # Our 10x scaling factor
+            
+            # Sign Flag: 0x01 = Negative, 0x00 = Positive
+            final_value = -scaled_magnitude if byte3 == 0x01 else scaled_magnitude
+            
+            print(f"  Received Bytes: [0x{byte1:02X}, 0x{byte2:02X}, 0x{byte3:02X}]")
+            print(f"  Decoded Field: {final_value} mT")
+            return final_value
+        except Exception as e:
+            return f"Query Failed: Error decoding bytes: {e}"
+
+
     def current_map_test(self):
         currs = np.arange(-.4,.4,0.1)
         for curr in currs:
