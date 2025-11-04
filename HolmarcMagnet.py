@@ -198,7 +198,6 @@ class controller:
         except Exception as e:
             return f"Query Failed: Error decoding bytes: {e}"
 
-
     def current_map_test(self):
         currs = np.arange(-.4,.4,0.1)
         for curr in currs:
@@ -213,10 +212,17 @@ class controller:
         """
         Pulses the magnet to a specified current for a given duration.
         """
+        if not isinstance(duration_sec, int):
+            Warning("Duration should be an integer number of seconds. Using floor...")
+            duration_sec = int(duration_sec)
         print(f"\n--- Pulsing magnet to {amps}A for {duration_sec} seconds ---")
         self.set_current(amps)
         # print(f"  Holding for {duration_sec} seconds...")
-        time.sleep(duration_sec+self.startup_delay_sec)
+        # time.sleep(duration_sec+self.startup_delay_sec)
+        for i in range(int(duration_sec+self.startup_delay_sec)):
+            # print(f"    {i+1} seconds elapsed...")
+            print(self.query_field(),"mT")
+            time.sleep(1)
         field = self.stop_and_query_field()
         print(f"  Measured Field after pulse: {field} mT")
         print("--- Pulse complete ---")
