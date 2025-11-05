@@ -1,6 +1,7 @@
 import pyvisa
 import time
 import numpy as np
+import pandas as pd
 
 class Controller:
     """
@@ -11,15 +12,23 @@ class Controller:
     """
     startup_delay_sec = -2.0  # Time to wait 
 
-    def current_map(self,current_amps):
+    def _current_map(self,current_amps):
         """Returns the 4-byte value array for a given current in Amps."""
+        def map_func(amp):
+            # amp = int((1299-35)/(4.0-0.1)*amp)
+            amp = 4.76264*amp**3 + 2.00444*amp**2 + 252.08648*amp - 8.46937
+            print(amp)
+            return int(amp)
         pos = 1
         if current_amps<0:
             current_amps = abs(current_amps)
             pos = 0
-        mapped = hex(int((1299-35)/(4.0-0.1)*current_amps))
+        mapped = hex(map_func(current_amps))
         return_list = [0x00]*4
-        return_list[1] = int(mapped[-2:],16)
+        try:
+            return_list[1] = int(mapped[-2:],16)
+        except ValueError:
+            return_list[1] = 0
         if (zeroth:=mapped.split('x')[1][:-2])!='':
             return_list[0] = int(zeroth,16)
         return_list[-1] = pos
@@ -30,6 +39,7 @@ class Controller:
         self.baud_rate = 19200
         self.inst = None
         self.rm = pyvisa.ResourceManager()
+        self.connect()
 
     def connect(self):
         """Initializes and configures the serial connection."""
@@ -106,8 +116,19 @@ class Controller:
         #     return
 
         # value_bytes = self.CURRENT_MAP[amps]
-        value_bytes = self.current_map(amps)
+        value_bytes = self._current_map(amps)
         self._run_start_sequence(value_bytes)
+
+    def set_field(self, field):
+        """
+        Sets the electromagnet field to a known value in mT based on
+        calibration data. Run field_calibration.py to generate.
+        """
+        dataframe = pd.read_csv('field_calibration_data.csv')
+        field_cal = dataframe['Field_mT'].values
+        current_cal = dataframe['Current_A'].values
+        idx = (np.abs(field_cal - field)).argmin()
+        self.set_current(current_cal[idx])
 
     def stop_and_query_field(self):
         """
@@ -215,7 +236,8 @@ class Controller:
 
     def pulse(self, amps, duration_sec):
         """
-        Pulses the magnet to a specified current for a given duration.
+        Pulses the magnet to a specified current for a given duration. 
+        BUG: Sends 0 current sometimes.
         """
         if not isinstance(duration_sec, int):
             Warning("Duration should be an integer number of seconds. Using floor...")
@@ -232,37 +254,44 @@ class Controller:
         print(f"  Measured Field after pulse: {field} mT")
         print("--- Pulse complete ---")
 
-# --- Main script to run the test ---
-if __name__ == "__main__":
+# # --- Main script to run the test ---
+# if __name__ == "__main__":
     
-    magnet = HolmarcMagnet(resource_name='ASRL5::INSTR')
+#     magnet = HolmarcMagnet(resource_name='ASRL5::INSTR')
     
-    if magnet.connect():
-        try:
-            # --- Test 1: Set to +1.0A ---
-            # print("\n*** TEST 1: SETTING +1.0A ***")
-            # magnet.set_current(1.0)
+#     if magnet.connect():
+#         try:
+#             # --- Test 1: Set to +1.0A ---
+#             # print("\n*** TEST 1: SETTING +1.0A ***")
+#             # magnet.set_current(1.0)
             
-            # print("  Waiting for 1 second...")
-            # time.sleep(1.0)
+#             # print("  Waiting for 1 second...")
+#             # time.sleep(1.0)
             
-            # field = magnet.stop_and_query_field()
-            # print(f"  Measured Field: {field} mT")
+#             # field = magnet.stop_and_query_field()
+#             # print(f"  Measured Field: {field} mT")
             
-            # print("\n  Pausing for 3 seconds...")
-            # time.sleep(3.0)
+#             # print("\n  Pausing for 3 seconds...")
+#             # time.sleep(3.0)
             
-            # --- Test 2: Set to -4.0A ---
-            # print("\n*** TEST 2: SETTING -3.9A ***")
-            # magnet.set_current('test')
+#             # --- Test 2: Set to -4.0A ---
+#             # print("\n*** TEST 2: SETTING -3.9A ***")
+#             # magnet.set_current('test')
             
-            # print("  Waiting for 1 second...")
-            # time.sleep(1.0)
+#             # print("  Waiting for 1 second...")
+#             # time.sleep(1.0)
             
-            # field = magnet.stop_and_query_field()
-            # print(f"  Measured Field: {field} mT")
-            magnet.current_map_test()
+#             # field = magnet.stop_and_query_field()
+#             # print(f"  Measured Field: {field} mT")
+#             magnet.current_map_test()
 
-        finally:
-            # Ensure we always close the connection
-            magnet.disconnect()
+#         finally:
+#             # Ensure we always close the connection
+#             magnet.disconnect()
+
+if __name__ == "__main__":
+    """This test is buggy due to a buggy pulse() method."""
+    magnet = MagnetController(resource_name='ASRL5::INSTR')
+    magnet.pulse(3.0, 5)
+    magnet.pulse(-3.0, 5)
+    magnet.disconnect()
